@@ -14,7 +14,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import gspread
 import requests
@@ -42,7 +42,8 @@ def append_to_sheet(menu: str, qty: int, price: float) -> dict:
         client = gspread.service_account_from_dict(credentials_info)
         sheet = client.open_by_key(spreadsheet_id).sheet1
 
-        timestamp = datetime.now().isoformat(timespec="seconds")
+        thai_tz = timezone(timedelta(hours=7))
+        timestamp = datetime.now(thai_tz).isoformat(timespec="seconds")
         total = qty * price
         row = [timestamp, menu, qty, price, total]
         sheet.append_row(row)
