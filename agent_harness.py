@@ -10,9 +10,11 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Mapping
+from datetime import datetime
 
 from dotenv import load_dotenv
 from google import genai
@@ -61,6 +63,13 @@ TOOL_SCHEMA = [
 def log_sale(menu: str, qty: int, price: float) -> str:
     """Return a fixed success message for sale logging."""
 
+    if not menu or not menu.strip():
+        raise ValueError("menu must not be empty")
+    if qty <= 0:
+        raise ValueError("qty must be positive")
+    if price <= 0:
+        raise ValueError("price must be positive")
+
     total = qty * price
     return f"OK: บันทึก {total:g} บาท notif via telegram"
 
@@ -68,11 +77,17 @@ def log_sale(menu: str, qty: int, price: float) -> str:
 def query_sales(date: str) -> str:
     """Return a fixed success message for daily sales lookup."""
 
+    if not date or not date.strip():
+        raise ValueError("date must not be empty")
+
     return f"OK: ยอดขายประจำวันที่ {date} คือ 1,250 บาท"
 
 
 def send_alert(message: str) -> str:
     """Return a fixed success message for alert delivery."""
+
+    if not message or not message.strip():
+        raise ValueError("message must not be empty")
 
     return f"OK: ส่งการแจ้งเตือน '{message}' เรียบร้อยแล้ว"
 
@@ -103,6 +118,32 @@ def _format_tool_call(name: str, args: Mapping[str, object] | None) -> str:
         else:
             rendered_args.append(f"{key}={value}")
     return f"{name}({', '.join(rendered_args)})"
+
+
+def log_trace(event_type: str, content: str) -> None:
+    """Print the trace line to console and append it to agent_trace.log."""
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    log_line = f"{timestamp} | {event_type} | {content}"
+
+    if event_type == "user_input":
+        print(f"[user] {content}")
+    elif event_type == "llm_response":
+        try:
+            tool_call = json.loads(content)
+            print(
+                f"[llm]  tool_call: {_format_tool_call(tool_call['tool'], tool_call.get('args'))}")
+        except Exception:
+            print(f"[llm]  tool_call: {content}")
+    elif event_type == "tool_result":
+        print(f"[tool] return: {content}")
+    elif event_type == "tool_error":
+        print(f"[tool] error: {content}")
+    else:
+        print(content)
+
+    with open("agent_trace.log", "a", encoding="utf-8") as log_file:
+        log_file.write(f"{log_line}\n")
 
 
 def _extract_function_call(response: types.GenerateContentResponse) -> types.FunctionCall:
@@ -150,8 +191,14 @@ def parse_command(cmd: str, api_key: str | None = None) -> dict:
                 )
             ),
             systemInstruction=(
-                "You are a command router for Thai CLI input. "
-                "Call exactly one available function and do not return plain text."
+                "Translate Thai user commands into the single tool call that "
+                "matches the user's literal intent, and do so directly. "
+                "If the user mentions 'บันทึกขาย', always call log_sale and "
+                "pass the qty value exactly as the user said it, even if it is "
+                "negative or looks unusual. Do not switch to another tool such "
+                "as send_alert just because an input value looks abnormal. "
+                "Validation of argument correctness belongs to the tool-side "
+                "code, not to you."
             ),
         ),
     )
@@ -186,18 +233,16 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        print(f"[user] {args.cmd}")
+        log_trace("user_input", args.cmd)
 
         tool_call = parse_command(args.cmd)
-        print(
-            f"[llm]  tool_call: {_format_tool_call(tool_call['tool'], tool_call['args'])}")
+        log_trace("llm_response", json.dumps(tool_call, ensure_ascii=False))
 
         result = dispatch_tool(tool_call)
-        print(f"[tool] return: {result}")
-        print(f"[assistant] {result}")
+        log_trace("tool_result", result)
         return 0
     except Exception as exc:
-        print(f"[tool] error: {exc}")
+        log_trace("tool_error", f"{type(exc).__name__}: {exc}")
         return 1
 
 
