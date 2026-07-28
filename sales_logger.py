@@ -30,6 +30,13 @@ def append_to_sheet(menu: str, qty: int, price: float) -> dict:
     Returns dict {timestamp, menu, qty, price, total} ที่ append แล้ว
     Raises RuntimeError ถ้า credentials ไม่มี หรือ Sheet ไม่ accessible
     """
+    if not menu or not menu.strip():
+        raise ValueError("menu must not be empty")
+    if qty <= 0:
+        raise ValueError("qty must be positive")
+    if price <= 0:
+        raise ValueError("price must be positive")
+
     credentials_raw = os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
     spreadsheet_id = os.environ.get("SPREADSHEET_ID")
 
@@ -69,6 +76,9 @@ def send_notification(message: str) -> str:
     Returns: provider name ที่ใช้ ("telegram" หรือ "line")
     Raises RuntimeError ถ้า no credentials
     """
+    if not message or not message.strip():
+        raise ValueError("message must not be empty")
+
     telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     line_token = os.environ.get("LINE_CHANNEL_TOKEN")
