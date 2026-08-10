@@ -18,7 +18,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_USERNAME: ${{ secrets.HF_USERNAME }}
-          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME || 'milklab-rag' }}
+          HF_SPACE_NAME: 'milklab-ai'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
