@@ -22,5 +22,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add hf https://x-access-token:${HF_TOKEN}@huggingface.co/spaces/wipha/milklab-ai
+          git remote add hf https://x-access-token:${HF_TOKEN}@huggingface.co/spaces/phollap/milklab-ai
           git push --force hf main
